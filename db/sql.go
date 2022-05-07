@@ -9,14 +9,14 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/cuityhj/gorest/resource"
 	"github.com/jackc/pgx/v4"
 	"github.com/zdnscloud/cement/reflector"
 	"github.com/zdnscloud/cement/stringtool"
 	"github.com/zdnscloud/cement/uuid"
-	"github.com/cuityhj/gorest/resource"
 )
 
-const TablePrefix = "gr_"
+const SchemaName = "gr."
 
 const (
 	joinSqlTemplateContent string = "select {{.OwnedTable}}.* from {{.OwnedTable}} inner join {{.RelTable}} on ({{.OwnedTable}}.id={{.RelTable}}.{{.Owned}} and {{.RelTable}}.{{.Owner}}=$1)"
@@ -29,7 +29,7 @@ func init() {
 }
 
 func resourceTableName(typ ResourceType) string {
-	return TablePrefix + string(typ)
+	return SchemaName + string(typ)
 }
 
 func createTableSql(descriptor *ResourceDescriptor) string {
