@@ -9,11 +9,12 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/cuityhj/gorest/resource"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/zdnscloud/cement/reflector"
 	"github.com/zdnscloud/cement/stringtool"
 	"github.com/zdnscloud/cement/uuid"
+
+	"github.com/cuityhj/gorest/resource"
 )
 
 const SchemaName = "gr."
