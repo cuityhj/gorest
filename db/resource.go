@@ -3,8 +3,8 @@ package db
 import (
 	"fmt"
 
-	"github.com/zdnscloud/cement/reflector"
-	"github.com/zdnscloud/cement/stringtool"
+	"github.com/cuityhj/cement/reflector"
+	"github.com/cuityhj/cement/stringtool"
 
 	"github.com/cuityhj/gorest/resource"
 )

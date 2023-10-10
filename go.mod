@@ -3,9 +3,9 @@ module github.com/cuityhj/gorest
 go 1.18
 
 require (
+	github.com/cuityhj/cement v1.0.0
 	github.com/gin-gonic/gin v1.8.0
 	github.com/jackc/pgx/v5 v5.2.0
-	github.com/zdnscloud/cement v0.0.0-20200503120134-aa381f4206fe
 )
 
 require (

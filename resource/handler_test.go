@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	ut "github.com/zdnscloud/cement/unittest"
+	ut "github.com/cuityhj/cement/unittest"
 	err "github.com/cuityhj/gorest/error"
 )
 

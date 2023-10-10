@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/zdnscloud/cement/stringtool"
+	"github.com/cuityhj/cement/stringtool"
 
 	"github.com/cuityhj/gorest/resource"
 )

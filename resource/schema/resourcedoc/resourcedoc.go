@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	slice "github.com/zdnscloud/cement/slice"
+	slice "github.com/cuityhj/cement/slice"
 	"github.com/cuityhj/gorest/resource"
 	"github.com/cuityhj/gorest/util"
 )

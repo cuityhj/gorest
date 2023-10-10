@@ -4,7 +4,7 @@ import (
 	"github.com/cuityhj/gorest/resource"
 	"testing"
 
-	ut "github.com/zdnscloud/cement/unittest"
+	ut "github.com/cuityhj/cement/unittest"
 )
 
 const (

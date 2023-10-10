@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/zdnscloud/cement/reflector"
-	"github.com/zdnscloud/cement/stringtool"
-	"github.com/zdnscloud/cement/uuid"
+	"github.com/cuityhj/cement/reflector"
+	"github.com/cuityhj/cement/stringtool"
+	"github.com/cuityhj/cement/uuid"
 
 	"github.com/cuityhj/gorest/resource"
 )

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	ut "github.com/zdnscloud/cement/unittest"
+	ut "github.com/cuityhj/cement/unittest"
 )
 
 func TestBuildValidator(t *testing.T) {

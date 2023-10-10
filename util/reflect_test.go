@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	ut "github.com/zdnscloud/cement/unittest"
+	ut "github.com/cuityhj/cement/unittest"
 )
 
 func TestValueKind(t *testing.T) {

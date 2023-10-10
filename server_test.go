@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ut "github.com/zdnscloud/cement/unittest"
+	ut "github.com/cuityhj/cement/unittest"
 	goresterr "github.com/cuityhj/gorest/error"
 	"github.com/cuityhj/gorest/resource"
 	"github.com/cuityhj/gorest/resource/schema"

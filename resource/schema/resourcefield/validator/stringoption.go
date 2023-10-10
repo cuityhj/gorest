@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/zdnscloud/cement/slice"
+	"github.com/cuityhj/cement/slice"
 	"github.com/cuityhj/gorest/util"
 )
 
