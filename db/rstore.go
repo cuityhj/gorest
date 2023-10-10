@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/cuityhj/cement/reflector"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/cuityhj/cement/reflector"
 
 	"github.com/cuityhj/gorest/resource"
 )
@@ -24,7 +24,7 @@ type RStoreTx struct {
 }
 
 func NewRStore(connStr string, meta *ResourceMeta) (ResourceStore, error) {
-	pool, err := pgxpool.Connect(context.TODO(), connStr)
+	pool, err := pgxpool.New(context.TODO(), connStr)
 	if err != nil {
 		return nil, err
 	}
