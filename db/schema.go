@@ -7,16 +7,17 @@ import (
 )
 
 const (
-	dropPublicSchemaSql = "drop schema if exists public cascade"
-	createLxSchemaSql   = "create schema if not exists gr"
+	dropSchemaSql   = "drop schema if exists $1 cascade"
+	createSchemaSql = "create schema if not exists gr"
 )
 
-func InitSchema(pool *pgxpool.Pool) error {
-	_, err := pool.Exec(context.TODO(), dropPublicSchemaSql)
-	if err != nil {
-		return err
+func InitSchema(pool *pgxpool.Pool, dropSchemaList ...string) error {
+	for _, schemaName := range dropSchemaList {
+		if _, err := pool.Exec(context.TODO(), dropSchemaSql, schemaName); err != nil {
+			return err
+		}
 	}
 
-	_, err = pool.Exec(context.TODO(), createLxSchemaSql)
+	_, err := pool.Exec(context.TODO(), createSchemaSql)
 	return err
 }

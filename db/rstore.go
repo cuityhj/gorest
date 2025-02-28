@@ -23,7 +23,7 @@ type RStoreTx struct {
 	meta *ResourceMeta
 }
 
-func NewRStore(connStr string, meta *ResourceMeta) (ResourceStore, error) {
+func NewRStore(connStr string, meta *ResourceMeta, dropSchemaList ...string) (ResourceStore, error) {
 	pool, err := pgxpool.New(context.TODO(), connStr)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func NewRStore(connStr string, meta *ResourceMeta) (ResourceStore, error) {
 		pool.Close()
 		return nil, err
 	} else if recovery == false {
-		if err := InitSchema(pool); err != nil {
+		if err := InitSchema(pool, dropSchemaList...); err != nil {
 			pool.Close()
 			return nil, err
 		}
