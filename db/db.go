@@ -35,14 +35,15 @@ type DriverName string
 
 const (
 	DriverNamePostgresql DriverName = "postgresql"
-	DriverNameGaussDB    DriverName = "opengauss"
+	DriverNameGaussDB    DriverName = "gaussdb"
+	DriverNameOpenGauss  DriverName = "opengauss"
 )
 
 func NewDB(driverName DriverName, connStr string) (DB, error) {
 	switch driverName {
 	case DriverNamePostgresql:
 		return NewPGDB(connStr)
-	case DriverNameGaussDB:
+	case DriverNameGaussDB, DriverNameOpenGauss:
 		return NewGaussDB(driverName, connStr)
 	default:
 		return nil, fmt.Errorf("unsupported driver %s", driverName)
