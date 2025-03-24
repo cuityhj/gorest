@@ -35,7 +35,7 @@ type DriverName string
 
 const (
 	DriverNamePostgresql DriverName = "postgresql"
-	DriverNameGaussDB    DriverName = "gaussdb"
+	DriverNameGaussDB    DriverName = "opengauss"
 )
 
 func NewDB(driverName DriverName, connStr string) (DB, error) {
