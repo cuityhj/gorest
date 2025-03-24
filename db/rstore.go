@@ -7,64 +7,60 @@ import (
 	"time"
 
 	"github.com/cuityhj/cement/reflector"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/cuityhj/gorest/resource"
 )
 
 type RStore struct {
-	pool *pgxpool.Pool
+	DB
 	meta *ResourceMeta
 }
 
 type RStoreTx struct {
-	pgx.Tx
+	Tx
 	meta *ResourceMeta
 }
 
-func NewRStore(connStr string, meta *ResourceMeta, dropSchemaList ...string) (ResourceStore, error) {
-	pool, err := pgxpool.New(context.TODO(), connStr)
+func NewRStore(driverName DriverName, connStr string, meta *ResourceMeta, dropSchemaList ...string) (ResourceStore, error) {
+	db, err := NewDB(driverName, connStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if recovery, err := DBIsRecoveryMode(pool); err != nil {
-		pool.Close()
+	if recovery, err := db.IsRecoveryMode(); err != nil {
+		db.Close()
 		return nil, err
 	} else if recovery == false {
-		if err := InitSchema(pool, dropSchemaList...); err != nil {
-			pool.Close()
+		if err := db.InitSchema(dropSchemaList...); err != nil {
+			db.Close()
 			return nil, err
 		}
 
 		for _, descriptor := range meta.GetDescriptors() {
-			_, err := pool.Exec(context.TODO(), createTableSql(descriptor))
-			if err != nil {
-				pool.Close()
+			if err := db.Exec(context.TODO(), createTableSql(descriptor)); err != nil {
+				db.Close()
 				return nil, err
 			}
 		}
 	}
 
-	return &RStore{pool, meta}, nil
+	return &RStore{db, meta}, nil
 }
 
 func (store *RStore) Close() {
-	store.pool.Close()
+	store.DB.Close()
 }
 
 func (store *RStore) Clean() {
 	rs := store.meta.Resources()
 	for i := len(rs); i > 0; i-- {
 		tableName := resourceTableName(rs[i-1])
-		store.pool.Exec(context.TODO(), "DROP TABLE IF EXISTS "+tableName+" CASCADE")
+		store.DB.Exec(context.TODO(), "DROP TABLE IF EXISTS "+tableName+" CASCADE")
 	}
 }
 
 func (store *RStore) Begin() (Transaction, error) {
-	tx, err := store.pool.Begin(context.TODO())
-	if err != nil {
+	if tx, err := store.DB.Begin(); err != nil {
 		return nil, err
 	} else {
 		return RStoreTx{tx, store.meta}, nil
@@ -78,8 +74,7 @@ func (tx RStoreTx) Insert(r resource.Resource) (resource.Resource, error) {
 		return nil, err
 	}
 
-	_, err = tx.Tx.Exec(context.TODO(), sql, args...)
-	if err != nil {
+	if _, err = tx.Tx.Exec(context.TODO(), sql, args...); err != nil {
 		return nil, err
 	} else {
 		return r, err
@@ -91,14 +86,14 @@ func (tx RStoreTx) GetOwned(owner ResourceType, ownerID string, owned ResourceTy
 	if err != nil {
 		return nil, err
 	}
+
 	sp := reflector.NewSlicePointer(reflect.PtrTo(goTyp))
 	sql, args, err := joinSelectSqlAndArgs(tx.meta, owner, owned, ownerID)
 	if err != nil {
 		return nil, err
 	}
 
-	err = tx.getWithSql(sql, args, sp)
-	if err != nil {
+	if err = tx.getWithSql(sql, args, sp); err != nil {
 		return nil, err
 	} else {
 		return reflect.ValueOf(sp).Elem().Interface(), nil
@@ -124,9 +119,9 @@ func (tx RStoreTx) Get(typ ResourceType, conds map[string]interface{}) (interfac
 	if err != nil {
 		return nil, err
 	}
+
 	sp := reflector.NewSlicePointer(reflect.PtrTo(goTyp))
-	err = tx.Fill(conds, sp)
-	if err != nil {
+	if err = tx.Fill(conds, sp); err != nil {
 		return nil, err
 	} else {
 		return reflect.ValueOf(sp).Elem().Interface(), nil
@@ -143,6 +138,7 @@ func (tx RStoreTx) Fill(conds map[string]interface{}, out interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	return tx.getWithSql(sql, args, out)
 }
 
@@ -171,12 +167,12 @@ func (tx RStoreTx) existsWithSql(sql string, params ...interface{}) (bool, error
 	}
 
 	var exist bool
-	//there should only one row
 	for rows.Next() {
 		if err := rows.Scan(&exist); err != nil {
 			return false, err
 		}
 	}
+
 	return exist, nil
 }
 
@@ -193,6 +189,7 @@ func (tx RStoreTx) CountEx(typ ResourceType, sql string, params ...interface{}) 
 	if tx.meta.Has(typ) == false {
 		return 0, fmt.Errorf("unknown resource type %v", typ)
 	}
+
 	return tx.countWithSql(sql, params...)
 }
 
@@ -203,7 +200,6 @@ func (tx RStoreTx) countWithSql(sql string, params ...interface{}) (int64, error
 	}
 
 	var count int64
-	//there should only one row
 	for rows.Next() {
 		if err := rows.Scan(&count); err != nil {
 			return 0, err
@@ -219,7 +215,7 @@ func (tx RStoreTx) Update(typ ResourceType, nv map[string]interface{}, conds map
 		return 0, err
 	}
 
-	return tx.Exec(sql, args...)
+	return tx.Tx.Exec(context.TODO(), sql, args...)
 }
 
 func (tx RStoreTx) Delete(typ ResourceType, conds map[string]interface{}) (int64, error) {
@@ -228,7 +224,11 @@ func (tx RStoreTx) Delete(typ ResourceType, conds map[string]interface{}) (int64
 		return 0, err
 	}
 
-	return tx.Exec(sql, args...)
+	return tx.Tx.Exec(context.TODO(), sql, args...)
+}
+
+func (tx RStoreTx) Exec(sql string, params ...interface{}) (int64, error) {
+	return tx.Tx.Exec(context.TODO(), sql, params...)
 }
 
 func (tx RStoreTx) GetEx(typ ResourceType, sql string, params ...interface{}) (interface{}, error) {
@@ -236,9 +236,9 @@ func (tx RStoreTx) GetEx(typ ResourceType, sql string, params ...interface{}) (i
 	if err != nil {
 		return nil, err
 	}
+
 	sp := reflector.NewSlicePointer(reflect.PtrTo(rt))
-	err = tx.FillEx(sp, sql, params...)
-	if err != nil {
+	if err = tx.FillEx(sp, sql, params...); err != nil {
 		return nil, err
 	} else {
 		return reflect.ValueOf(sp).Elem().Interface(), nil
@@ -247,15 +247,6 @@ func (tx RStoreTx) GetEx(typ ResourceType, sql string, params ...interface{}) (i
 
 func (tx RStoreTx) FillEx(out interface{}, sql string, params ...interface{}) error {
 	return tx.getWithSql(sql, params, out)
-}
-
-func (tx RStoreTx) Exec(sql string, params ...interface{}) (int64, error) {
-	result, err := tx.Tx.Exec(context.TODO(), sql, params...)
-	if err != nil {
-		return 0, err
-	} else {
-		return result.RowsAffected(), nil
-	}
 }
 
 func (tx RStoreTx) Commit() error {

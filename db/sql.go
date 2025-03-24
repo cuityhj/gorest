@@ -9,7 +9,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/cuityhj/cement/reflector"
 	"github.com/cuityhj/cement/stringtool"
 	"github.com/cuityhj/cement/uuid"
@@ -378,7 +377,7 @@ func getSqlWhereState(conds map[string]interface{}) (string, []interface{}, erro
 	return strings.Join(whereState, " and "), args, nil
 }
 
-func rowsToResources(rows pgx.Rows, out interface{}) error {
+func rowsToResources(rows TxRows, out interface{}) error {
 	goTyp := reflect.TypeOf(out)
 	if goTyp.Kind() != reflect.Ptr || goTyp.Elem().Kind() != reflect.Slice {
 		return fmt.Errorf("output isn't a pointer to slice")
@@ -388,35 +387,42 @@ func rowsToResources(rows pgx.Rows, out interface{}) error {
 	if slice.Type().Elem().Kind() != reflect.Ptr {
 		return fmt.Errorf("output isn't a pointer to slice of pointer")
 	}
-	typ := slice.Type().Elem().Elem()
 
+	typ := slice.Type().Elem().Elem()
 	for rows.Next() {
 		elem := reflect.New(typ)
-		fd := rows.FieldDescriptions()
-		fields := make([]interface{}, 0, len(fd))
-		var id string
-		var createTime time.Time
-		for _, d := range fd {
-			if string(d.Name) == IDField {
-				fields = append(fields, &id)
-			} else if string(d.Name) == CreateTimeField {
-				fields = append(fields, &createTime)
-			} else {
-				fieldName := stringtool.ToUpperCamel(string(d.Name))
-				fields = append(fields, elem.Elem().FieldByName(fieldName).Addr().Interface())
-			}
-		}
-		err := rows.Scan(fields...)
+		fieldNames, err := rows.FieldNames()
 		if err != nil {
 			return err
 		}
+
+		fields := make([]interface{}, 0, len(fieldNames))
+		var id string
+		var createTime time.Time
+		for _, fieldName := range fieldNames {
+			if fieldName == IDField {
+				fields = append(fields, &id)
+			} else if fieldName == CreateTimeField {
+				fields = append(fields, &createTime)
+			} else {
+				upperFieldName := stringtool.ToUpperCamel(fieldName)
+				fields = append(fields, elem.Elem().FieldByName(upperFieldName).Addr().Interface())
+			}
+		}
+
+		if err = rows.Scan(fields...); err != nil {
+			return err
+		}
+
 		r, ok := elem.Interface().(resource.Resource)
 		if !ok {
 			return fmt.Errorf("output isn't a pointer to slice of resource")
 		}
+
 		r.SetID(id)
 		r.SetCreationTimestamp(createTime)
 		slice.Set(reflect.Append(slice, elem))
 	}
+
 	return nil
 }

@@ -2,16 +2,14 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type recovery struct {
 	PgIsInRecovery bool
 }
 
-func DBIsRecoveryMode(pool *pgxpool.Pool) (bool, error) {
-	rows, err := pool.Query(context.TODO(), "select pg_is_in_recovery()")
+func DBIsRecoveryMode(db DB) (bool, error) {
+	rows, err := db.Query(context.TODO(), "select pg_is_in_recovery()")
 	if err != nil {
 		return false, err
 	}

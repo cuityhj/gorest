@@ -3,8 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -12,13 +10,12 @@ const (
 	createSchemaSql = "create schema if not exists gr"
 )
 
-func InitSchema(pool *pgxpool.Pool, dropSchemaList ...string) error {
+func InitDBSchema(db DB, dropSchemaList ...string) error {
 	for _, schemaName := range dropSchemaList {
-		if _, err := pool.Exec(context.TODO(), fmt.Sprintf(dropSchemaSql, schemaName)); err != nil {
+		if err := db.Exec(context.TODO(), fmt.Sprintf(dropSchemaSql, schemaName)); err != nil {
 			return err
 		}
 	}
 
-	_, err := pool.Exec(context.TODO(), createSchemaSql)
-	return err
+	return db.Exec(context.TODO(), createSchemaSql)
 }
