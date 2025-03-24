@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+
+	_ "gitee.com/opengauss/openGauss-connector-go-pq"
 )
 
 type GaussDB struct {
