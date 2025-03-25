@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"net"
+	"reflect"
 
 	_ "gitee.com/opengauss/openGauss-connector-go-pq"
 )
@@ -61,6 +63,7 @@ func (gs *GaussDB) GetDriver() Driver {
 }
 
 func (tx *GaussTx) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
+	adaptorArrayArgs(args...)
 	if result, err := tx.tx.ExecContext(ctx, sql, args...); err != nil {
 		return 0, err
 	} else {
@@ -69,6 +72,7 @@ func (tx *GaussTx) Exec(ctx context.Context, sql string, args ...any) (int64, er
 }
 
 func (tx *GaussTx) Query(ctx context.Context, sql string, args ...any) (TxRows, error) {
+	adaptorArrayArgs(args...)
 	if rows, err := tx.tx.QueryContext(ctx, sql, args...); err != nil {
 		return nil, err
 	} else {
@@ -94,4 +98,17 @@ func (rows *GaussTxRows) FieldNames() ([]string, error) {
 
 func (rows *GaussTxRows) GetDriver() Driver {
 	return DriverOpenGauss
+}
+
+var INETKind = reflect.TypeOf(net.IP{}).Kind()
+
+func adaptorArrayArgs(args ...any) {
+	for i, arg := range args {
+		switch argVal := reflect.ValueOf(arg); argVal.Type().Kind() {
+		case INETKind:
+			args[i] = reflect.ValueOf(arg.(net.IP).String()).Interface()
+		case reflect.Array, reflect.Slice:
+			args[i] = PQArray(arg)
+		}
+	}
 }

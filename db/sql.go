@@ -132,12 +132,7 @@ func insertSqlArgsAndID(driver Driver, meta *ResourceMeta, r resource.Resource) 
 			args = append(args, r.GetCreationTimestamp())
 		} else {
 			fieldVal := val.FieldByName(stringtool.ToUpperCamel(field.Name))
-			if driver == DriverOpenGauss &&
-				(fieldVal.Type().Kind() == reflect.Array || fieldVal.Type().Kind() == reflect.Slice) {
-				args = append(args, reflect.ValueOf(PQArray(fieldVal.Interface())).Interface())
-			} else {
-				args = append(args, fieldVal.Interface())
-			}
+			args = append(args, fieldVal.Interface())
 		}
 	}
 
