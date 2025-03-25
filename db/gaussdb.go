@@ -56,6 +56,10 @@ func (gs *GaussDB) Close() error {
 	return gs.db.Close()
 }
 
+func (gs *GaussDB) GetDriver() Driver {
+	return DriverOpenGauss
+}
+
 func (tx *GaussTx) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
 	if result, err := tx.tx.ExecContext(ctx, sql, args...); err != nil {
 		return 0, err
@@ -80,6 +84,14 @@ func (tx *GaussTx) Rollback(ctx context.Context) error {
 	return tx.tx.Rollback()
 }
 
+func (tx *GaussTx) GetDriver() Driver {
+	return DriverOpenGauss
+}
+
 func (rows *GaussTxRows) FieldNames() ([]string, error) {
 	return rows.Columns()
+}
+
+func (rows *GaussTxRows) GetDriver() Driver {
+	return DriverOpenGauss
 }

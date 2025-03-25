@@ -57,6 +57,10 @@ func (pg *PGDB) Close() error {
 	return nil
 }
 
+func (pg *PGDB) GetDriver() Driver {
+	return DriverPostgresql
+}
+
 func (tx *PGTx) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
 	if result, err := tx.tx.Exec(ctx, sql, args...); err != nil {
 		return 0, err
@@ -81,6 +85,10 @@ func (tx *PGTx) Rollback(ctx context.Context) error {
 	return tx.tx.Rollback(ctx)
 }
 
+func (tx *PGTx) GetDriver() Driver {
+	return DriverPostgresql
+}
+
 func (rows *PGTxRows) FieldNames() ([]string, error) {
 	fields := rows.FieldDescriptions()
 	fieldNames := make([]string, 0, len(fields))
@@ -89,4 +97,8 @@ func (rows *PGTxRows) FieldNames() ([]string, error) {
 	}
 
 	return fieldNames, nil
+}
+
+func (rows *PGTxRows) GetDriver() Driver {
+	return DriverPostgresql
 }

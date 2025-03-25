@@ -97,7 +97,7 @@ func createTableSql(descriptor *ResourceDescriptor) string {
 	return sql
 }
 
-func insertSqlArgsAndID(meta *ResourceMeta, r resource.Resource) (string, []interface{}, error) {
+func insertSqlArgsAndID(driver Driver, meta *ResourceMeta, r resource.Resource) (string, []interface{}, error) {
 	typ := ResourceDBType(r)
 	descriptor, err := meta.GetDescriptor(typ)
 	if err != nil {
@@ -110,6 +110,7 @@ func insertSqlArgsAndID(meta *ResourceMeta, r resource.Resource) (string, []inte
 	for i := 1; i <= fieldCount; i++ {
 		markers = append(markers, "$"+strconv.Itoa(i))
 	}
+
 	sql := strings.Join([]string{"insert into", tableName, "values(", strings.Join(markers, ","), ")"}, " ")
 	args := make([]interface{}, 0, fieldCount)
 
@@ -131,7 +132,12 @@ func insertSqlArgsAndID(meta *ResourceMeta, r resource.Resource) (string, []inte
 			args = append(args, r.GetCreationTimestamp())
 		} else {
 			fieldVal := val.FieldByName(stringtool.ToUpperCamel(field.Name))
-			args = append(args, fieldVal.Interface())
+			if driver == DriverOpenGauss &&
+				(fieldVal.Type().Kind() == reflect.Array || fieldVal.Type().Kind() == reflect.Slice) {
+				args = append(args, reflect.ValueOf(PQArray(fieldVal.Interface())).Interface())
+			} else {
+				args = append(args, fieldVal.Interface())
+			}
 		}
 	}
 
@@ -205,7 +211,6 @@ func deleteSqlAndArgs(meta *ResourceMeta, typ ResourceType, conds map[string]int
 	return strings.Join([]string{"delete from", resourceTableName(descriptor.Typ), "where", whereSeq}, " "), args, nil
 }
 
-//select count(*) from zc_zone where zdnsuser=$1
 func existsSqlAndArgs(meta *ResourceMeta, typ ResourceType, conds map[string]interface{}) (string, []interface{}, error) {
 	descriptor, err := meta.GetDescriptor(typ)
 	if err != nil {
@@ -230,7 +235,6 @@ func existsSqlAndArgs(meta *ResourceMeta, typ ResourceType, conds map[string]int
 	return strings.Join([]string{"select (exists (select 1 from ", resourceTableName(descriptor.Typ), "where", whereSeq, "limit 1))"}, " "), args, nil
 }
 
-//select count(*) from zc_zone where zdnsuser=$1
 func countSqlAndArgs(meta *ResourceMeta, typ ResourceType, conds map[string]interface{}) (string, []interface{}, error) {
 	descriptor, err := meta.GetDescriptor(typ)
 	if err != nil {
@@ -247,7 +251,6 @@ func countSqlAndArgs(meta *ResourceMeta, typ ResourceType, conds map[string]inte
 	}
 }
 
-//UPDATE films SET kind = 'Dramatic' WHERE kind = 'Drama';
 func updateSqlAndArgs(meta *ResourceMeta, typ ResourceType, newVals map[string]interface{}, conds map[string]interface{}) (string, []interface{}, error) {
 	descriptor, err := meta.GetDescriptor(typ)
 	if err != nil {
@@ -406,7 +409,13 @@ func rowsToResources(rows TxRows, out interface{}) error {
 				fields = append(fields, &createTime)
 			} else {
 				upperFieldName := stringtool.ToUpperCamel(fieldName)
-				fields = append(fields, elem.Elem().FieldByName(upperFieldName).Addr().Interface())
+				field := elem.Elem().FieldByName(upperFieldName)
+				if rows.GetDriver() == DriverOpenGauss &&
+					(field.Kind() == reflect.Slice || field.Kind() == reflect.Array) {
+					fields = append(fields, PQArray(field.Addr().Interface()))
+				} else {
+					fields = append(fields, field.Addr().Interface())
+				}
 			}
 		}
 

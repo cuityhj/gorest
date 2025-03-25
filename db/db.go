@@ -17,11 +17,13 @@ type DB interface {
 	Query(context.Context, string, ...any) (DBRows, error)
 	Begin() (Tx, error)
 	Close() error
+	GetDriver() Driver
 }
 
 type TxRows interface {
 	DBRows
 	FieldNames() ([]string, error)
+	GetDriver() Driver
 }
 
 type Tx interface {
@@ -29,13 +31,20 @@ type Tx interface {
 	Query(context.Context, string, ...any) (TxRows, error)
 	Commit(context.Context) error
 	Rollback(context.Context) error
+	GetDriver() Driver
 }
+
+type Driver uint32
+
+const (
+	DriverPostgresql Driver = 1
+	DriverOpenGauss  Driver = 2
+)
 
 type DriverName string
 
 const (
 	DriverNamePostgresql DriverName = "postgresql"
-	DriverNameGaussDB    DriverName = "gaussdb"
 	DriverNameOpenGauss  DriverName = "opengauss"
 )
 
@@ -43,7 +52,7 @@ func NewDB(driverName DriverName, connStr string) (DB, error) {
 	switch driverName {
 	case DriverNamePostgresql:
 		return NewPGDB(connStr)
-	case DriverNameGaussDB, DriverNameOpenGauss:
+	case DriverNameOpenGauss:
 		return NewGaussDB(driverName, connStr)
 	default:
 		return nil, fmt.Errorf("unsupported driver %s", driverName)
