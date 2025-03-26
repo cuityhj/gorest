@@ -100,14 +100,11 @@ func (rows *GaussTxRows) GetDriver() Driver {
 	return DriverOpenGauss
 }
 
-var INETKind = reflect.TypeOf(net.IP{}).Kind()
+var NETIPType = reflect.TypeOf(net.IP{})
 
 func adaptorArrayArgs(args ...any) {
 	for i, arg := range args {
-		switch argVal := reflect.ValueOf(arg); argVal.Type().Kind() {
-		case INETKind:
-			args[i] = reflect.ValueOf(arg.(net.IP).String()).Interface()
-		case reflect.Array, reflect.Slice:
+		if kind := reflect.TypeOf(arg).Kind(); kind == reflect.Array || kind == reflect.Slice {
 			args[i] = PQArray(arg)
 		}
 	}
