@@ -97,7 +97,7 @@ func createTableSql(descriptor *ResourceDescriptor) string {
 	return sql
 }
 
-func insertSqlArgsAndID(driver Driver, meta *ResourceMeta, r resource.Resource) (string, []interface{}, error) {
+func insertSqlArgsAndID(meta *ResourceMeta, r resource.Resource) (string, []interface{}, error) {
 	typ := ResourceDBType(r)
 	descriptor, err := meta.GetDescriptor(typ)
 	if err != nil {
