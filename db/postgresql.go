@@ -3,27 +3,31 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/cuityhj/pgx/v5"
+	"github.com/cuityhj/pgx/v5/pgconn"
+	"github.com/cuityhj/pgx/v5/pgxpool"
 )
 
 type PGDB struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	driver Driver
 }
 
 type PGTx struct {
-	tx pgx.Tx
+	tx     pgx.Tx
+	driver Driver
 }
 
 type PGTxRows struct {
-	pgx.Rows
+	rows   pgx.Rows
+	driver Driver
 }
 
 func NewPGDB(connStr string) (DB, error) {
 	if pool, err := pgxpool.New(context.TODO(), connStr); err != nil {
 		return nil, err
 	} else {
-		return &PGDB{pool}, nil
+		return &PGDB{pool: pool, driver: DriverPostgresql}, nil
 	}
 }
 
@@ -32,7 +36,7 @@ func (pg *PGDB) IsRecoveryMode() (bool, error) {
 }
 
 func (pg *PGDB) InitSchema(dropSchemaList ...string) error {
-	return InitDBSchema(pg, dropSchemaList...)
+	return pg.Exec(context.TODO(), createSchemaIfNotExistsSql)
 }
 
 func (pg *PGDB) Exec(ctx context.Context, sql string, args ...any) error {
@@ -48,7 +52,7 @@ func (pg *PGDB) Begin() (Tx, error) {
 	if tx, err := pg.pool.Begin(context.TODO()); err != nil {
 		return nil, err
 	} else {
-		return &PGTx{tx}, nil
+		return &PGTx{tx: tx, driver: pg.driver}, nil
 	}
 }
 
@@ -58,7 +62,7 @@ func (pg *PGDB) Close() error {
 }
 
 func (pg *PGDB) GetDriver() Driver {
-	return DriverPostgresql
+	return pg.driver
 }
 
 func (tx *PGTx) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
@@ -73,7 +77,7 @@ func (tx *PGTx) Query(ctx context.Context, sql string, args ...any) (TxRows, err
 	if rows, err := tx.tx.Query(ctx, sql, args...); err != nil {
 		return nil, err
 	} else {
-		return &PGTxRows{rows}, nil
+		return &PGTxRows{rows: rows, driver: tx.driver}, nil
 	}
 }
 
@@ -86,19 +90,21 @@ func (tx *PGTx) Rollback(ctx context.Context) error {
 }
 
 func (tx *PGTx) GetDriver() Driver {
-	return DriverPostgresql
+	return tx.driver
 }
 
-func (rows *PGTxRows) FieldNames() ([]string, error) {
-	fields := rows.FieldDescriptions()
-	fieldNames := make([]string, 0, len(fields))
-	for _, field := range fields {
-		fieldNames = append(fieldNames, field.Name)
-	}
+func (rows *PGTxRows) Next() bool {
+	return rows.rows.Next()
+}
 
-	return fieldNames, nil
+func (rows *PGTxRows) Scan(fields ...any) error {
+	return rows.rows.Scan(fields...)
+}
+
+func (rows *PGTxRows) Fields() []pgconn.FieldDescription {
+	return rows.rows.FieldDescriptions()
 }
 
 func (rows *PGTxRows) GetDriver() Driver {
-	return DriverPostgresql
+	return rows.driver
 }

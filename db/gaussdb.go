@@ -2,30 +2,22 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"net"
-	"reflect"
+	"fmt"
 
-	_ "gitee.com/opengauss/openGauss-connector-go-pq"
+	"github.com/cuityhj/pgx/v5/pgxpool"
 )
 
+//pgx has adapted gaussdb
 type GaussDB struct {
-	db *sql.DB
+	pool   *pgxpool.Pool
+	driver Driver
 }
 
-type GaussTx struct {
-	tx *sql.Tx
-}
-
-type GaussTxRows struct {
-	*sql.Rows
-}
-
-func NewGaussDB(driverName DriverName, connStr string) (DB, error) {
-	if db, err := sql.Open(string(driverName), connStr); err != nil {
+func NewGaussDB(connStr string) (DB, error) {
+	if pool, err := pgxpool.New(context.TODO(), connStr); err != nil {
 		return nil, err
 	} else {
-		return &GaussDB{db}, nil
+		return &GaussDB{pool: pool, driver: DriverOpenGauss}, nil
 	}
 }
 
@@ -34,78 +26,54 @@ func (gs *GaussDB) IsRecoveryMode() (bool, error) {
 }
 
 func (gs *GaussDB) InitSchema(dropSchemaList ...string) error {
-	return InitDBSchema(gs, dropSchemaList...)
+	for _, schemaName := range dropSchemaList {
+		if err := gs.Exec(context.TODO(), fmt.Sprintf(dropSchemaSql, schemaName)); err != nil {
+			return err
+		}
+	}
+
+	rows, err := gs.Query(context.TODO(), querySchemaSql)
+	if err != nil {
+		return err
+	}
+
+	var count int64
+	for rows.Next() {
+		if err := rows.Scan(&count); err != nil {
+			return err
+		}
+	}
+
+	if count == 0 {
+		return gs.Exec(context.TODO(), createSchemaSql)
+	}
+
+	return nil
 }
 
 func (gs *GaussDB) Exec(ctx context.Context, sql string, args ...any) error {
-	_, err := gs.db.ExecContext(ctx, sql, args...)
+	_, err := gs.pool.Exec(ctx, sql, args...)
 	return err
 }
 
 func (gs *GaussDB) Query(ctx context.Context, sql string, args ...any) (DBRows, error) {
-	return gs.db.QueryContext(ctx, sql, args...)
+	return gs.pool.Query(ctx, sql, args...)
 }
 
+//return PGTx without rewrite other interfaces
 func (gs *GaussDB) Begin() (Tx, error) {
-	if tx, err := gs.db.Begin(); err != nil {
+	if tx, err := gs.pool.Begin(context.TODO()); err != nil {
 		return nil, err
 	} else {
-		return &GaussTx{tx}, nil
+		return &PGTx{tx: tx, driver: gs.driver}, nil
 	}
 }
 
 func (gs *GaussDB) Close() error {
-	return gs.db.Close()
+	gs.pool.Close()
+	return nil
 }
 
 func (gs *GaussDB) GetDriver() Driver {
-	return DriverOpenGauss
-}
-
-func (tx *GaussTx) Exec(ctx context.Context, sql string, args ...any) (int64, error) {
-	adaptorArrayArgs(args...)
-	if result, err := tx.tx.ExecContext(ctx, sql, args...); err != nil {
-		return 0, err
-	} else {
-		return result.RowsAffected()
-	}
-}
-
-func (tx *GaussTx) Query(ctx context.Context, sql string, args ...any) (TxRows, error) {
-	adaptorArrayArgs(args...)
-	if rows, err := tx.tx.QueryContext(ctx, sql, args...); err != nil {
-		return nil, err
-	} else {
-		return &GaussTxRows{rows}, nil
-	}
-}
-
-func (tx *GaussTx) Commit(ctx context.Context) error {
-	return tx.tx.Commit()
-}
-
-func (tx *GaussTx) Rollback(ctx context.Context) error {
-	return tx.tx.Rollback()
-}
-
-func (tx *GaussTx) GetDriver() Driver {
-	return DriverOpenGauss
-}
-
-func (rows *GaussTxRows) FieldNames() ([]string, error) {
-	return rows.Columns()
-}
-
-func (rows *GaussTxRows) GetDriver() Driver {
-	return DriverOpenGauss
-}
-
-var NETIPType = reflect.TypeOf(net.IP{})
-
-func adaptorArrayArgs(args ...any) {
-	for i, arg := range args {
-		if kind := reflect.TypeOf(arg).Kind(); kind == reflect.Array || kind == reflect.Slice {
-			args[i] = PQArray(arg)
-		}
-	}
+	return gs.driver
 }

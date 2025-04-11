@@ -131,8 +131,7 @@ func insertSqlArgsAndID(meta *ResourceMeta, r resource.Resource) (string, []inte
 		} else if field.Name == CreateTimeField {
 			args = append(args, r.GetCreationTimestamp())
 		} else {
-			fieldVal := val.FieldByName(stringtool.ToUpperCamel(field.Name))
-			args = append(args, fieldVal.Interface())
+			args = append(args, val.FieldByName(stringtool.ToUpperCamel(field.Name)).Interface())
 		}
 	}
 
@@ -389,32 +388,21 @@ func rowsToResources(rows TxRows, out interface{}) error {
 	typ := slice.Type().Elem().Elem()
 	for rows.Next() {
 		elem := reflect.New(typ)
-		fieldNames, err := rows.FieldNames()
-		if err != nil {
-			return err
-		}
-
-		fields := make([]interface{}, 0, len(fieldNames))
+		fds := rows.Fields()
+		fields := make([]interface{}, 0, len(fds))
 		var id string
 		var createTime time.Time
-		for _, fieldName := range fieldNames {
-			if fieldName == IDField {
+		for _, fd := range fds {
+			if string(fd.Name) == IDField {
 				fields = append(fields, &id)
-			} else if fieldName == CreateTimeField {
+			} else if string(fd.Name) == CreateTimeField {
 				fields = append(fields, &createTime)
 			} else {
-				upperFieldName := stringtool.ToUpperCamel(fieldName)
-				field := elem.Elem().FieldByName(upperFieldName)
-				if rows.GetDriver() == DriverOpenGauss &&
-					(field.Kind() == reflect.Slice || field.Kind() == reflect.Array) {
-					fields = append(fields, PQArray(field.Addr().Interface()))
-				} else {
-					fields = append(fields, field.Addr().Interface())
-				}
+				fields = append(fields, elem.Elem().FieldByName(stringtool.ToUpperCamel(fd.Name)).Addr().Interface())
 			}
 		}
 
-		if err = rows.Scan(fields...); err != nil {
+		if err := rows.Scan(fields...); err != nil {
 			return err
 		}
 

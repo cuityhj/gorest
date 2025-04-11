@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"fmt"
+
+	"github.com/cuityhj/pgx/v5/pgconn"
 )
 
 type DBRows interface {
@@ -22,7 +24,7 @@ type DB interface {
 
 type TxRows interface {
 	DBRows
-	FieldNames() ([]string, error)
+	Fields() []pgconn.FieldDescription
 	GetDriver() Driver
 }
 
@@ -53,7 +55,7 @@ func NewDB(driverName DriverName, connStr string) (DB, error) {
 	case DriverNamePostgresql:
 		return NewPGDB(connStr)
 	case DriverNameOpenGauss:
-		return NewGaussDB(driverName, connStr)
+		return NewGaussDB(connStr)
 	default:
 		return nil, fmt.Errorf("unsupported driver %s", driverName)
 	}

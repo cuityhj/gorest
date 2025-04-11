@@ -46,13 +46,13 @@ type Transaction interface {
 func WithTx(store ResourceStore, f func(Transaction) error) error {
 	tx, err := store.Begin()
 	if err == nil {
-		err = f(tx)
-		if err == nil {
+		if err = f(tx); err == nil {
 			tx.Commit()
 		} else {
 			tx.Rollback()
 		}
 	}
+
 	return err
 }
 
